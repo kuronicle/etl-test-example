@@ -23,12 +23,12 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- target DB of tests. -->
         <dependency>
-            <groupId>oracle</groupId>
-            <artifactId>ojdbc</artifactId>
-            <version>6.0</version>
-            <scope>system</scope>
-            <systemPath>${basedir}/lib/ojdbc6.jar</systemPath>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <version>1.4.192</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
