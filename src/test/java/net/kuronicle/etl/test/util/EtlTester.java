@@ -63,63 +63,49 @@ public class EtlTester {
     public EtlTester(String datastoreInfoFilePath) {
         this.datastoreInfoFilePath = datastoreInfoFilePath;
         try {
-            datastoreInfoWorkbook = WorkbookFactory.create(new File(
-                    datastoreInfoFilePath));
+            datastoreInfoWorkbook = WorkbookFactory.create(new File(datastoreInfoFilePath));
         } catch (InvalidFormatException e) {
-            throw new RuntimeException("Invalid datastore file. file="
-                    + datastoreInfoFilePath, e);
+            throw new RuntimeException("Invalid datastore file. file=" + datastoreInfoFilePath, e);
         } catch (IOException e) {
-            throw new RuntimeException(
-                    "Error occerd when reading datastore file. file="
-                            + datastoreInfoFilePath, e);
+            throw new RuntimeException("Error occerd when reading datastore file. file=" + datastoreInfoFilePath, e);
         }
 
     }
 
-    public void prepareDatastores(final String ifId, final String testCaseId)
-            throws Exception {
-        log.debug("Start preparing datastores. ifId=" + ifId + ", testCaseId="
-                + testCaseId);
+    public void prepareDatastores(final String ifId, final String testCaseId) throws Exception {
+        log.debug("Start preparing datastores. ifId=" + ifId + ", testCaseId=" + testCaseId);
 
-        String testcaseFileDir = FilenameUtils.concat(
-                FilenameUtils.concat(testcaseRootDir, ifId), testCaseId);
+        String testcaseFileDir = FilenameUtils.concat(FilenameUtils.concat(testcaseRootDir, ifId), testCaseId);
 
         File ifIdDir = new File(testcaseFileDir);
         String[] datastoreFiles = ifIdDir.list(new FilenameFilter() {
 
             public boolean accept(File dir, String name) {
-                return (name.startsWith(testCaseId + FILENAME_SEPARATOR
-                        + BEFORE_FILENAME_FLAG + FILENAME_SEPARATOR)) ? true
-                        : false;
+                return (name.startsWith(testCaseId + FILENAME_SEPARATOR + BEFORE_FILENAME_FLAG + FILENAME_SEPARATOR))
+                        ? true : false;
             }
         });
 
         for (String datastoreFileName : datastoreFiles) {
-            String datastoreName = datastoreFileName
-                    .substring((testCaseId + FILENAME_SEPARATOR
-                            + BEFORE_FILENAME_FLAG + FILENAME_SEPARATOR)
-                            .length(), datastoreFileName.lastIndexOf("."));
+            String datastoreName = datastoreFileName.substring(
+                    (testCaseId + FILENAME_SEPARATOR + BEFORE_FILENAME_FLAG + FILENAME_SEPARATOR).length(),
+                    datastoreFileName.lastIndexOf("."));
 
             DatastoreInfo datastore = getDatastoreInfo(datastoreName);
 
             if (datastore instanceof DatabaseInfo) {
                 IDatabaseTester databaseTester = getDatabaseTester(datastoreName);
-                databaseTester.setDataSet(new XlsDataSet(new File(FilenameUtils
-                        .concat(testcaseFileDir, datastoreFileName))));
                 databaseTester
-                        .setSetUpOperation(DatabaseOperation.CLEAN_INSERT);
+                        .setDataSet(new XlsDataSet(new File(FilenameUtils.concat(testcaseFileDir, datastoreFileName))));
+                databaseTester.setSetUpOperation(DatabaseOperation.CLEAN_INSERT);
                 databaseTester.onSetup();
-                log.debug(String
-                        .format("Clean and Insert data to database. schema=%s, dataFile=%s",
-                                ((DatabaseInfo) datastore).getSchema(),
-                                datastoreFileName));
+                log.debug(String.format("Clean and Insert data to database. schema=%s, dataFile=%s",
+                        ((DatabaseInfo) datastore).getSchema(), datastoreFileName));
             } else if (datastore instanceof FlatFileInfo) {
 
-                File srcFile = new File(FilenameUtils.concat(testcaseFileDir,
-                        datastoreFileName));
+                File srcFile = new File(FilenameUtils.concat(testcaseFileDir, datastoreFileName));
 
-                File destFile = new File(
-                        ((FlatFileInfo) datastore).getFilePath());
+                File destFile = new File(((FlatFileInfo) datastore).getFilePath());
 
                 if (destFile.exists()) {
                     destFile.delete();
@@ -127,75 +113,59 @@ public class EtlTester {
                 }
 
                 FileUtils.copyFile(srcFile, destFile);
-                log.debug("Copy flat file before test. srcFile="
-                        + srcFile.getPath() + ", destFile="
+                log.debug("Copy flat file before test. srcFile=" + srcFile.getPath() + ", destFile="
                         + destFile.getPath());
             }
         }
 
-        log.debug("Finish preparing datastores. ifId=" + ifId + ", testCaseId="
-                + testCaseId);
+        log.debug("Finish preparing datastores. ifId=" + ifId + ", testCaseId=" + testCaseId);
     }
 
     private DatastoreInfo readDatastoreInfo(String datastoreName) {
-        Sheet datastoreInfoSheet = datastoreInfoWorkbook
-                .getSheet(datastoreName);
+        Sheet datastoreInfoSheet = datastoreInfoWorkbook.getSheet(datastoreName);
 
         if (datastoreInfoSheet == null) {
-            throw new RuntimeException(
-                    "Datastore sheet does not found. datastoreName="
-                            + datastoreName + ", datastoreFile="
-                            + datastoreInfoFilePath);
+            throw new RuntimeException("Datastore sheet does not found. datastoreName=" + datastoreName
+                    + ", datastoreFile=" + datastoreInfoFilePath);
         }
 
-        String datastoreType = datastoreInfoSheet.getRow(0).getCell(1)
-                .getStringCellValue();
+        String datastoreType = datastoreInfoSheet.getRow(0).getCell(1).getStringCellValue();
 
         if ("Database".equals(datastoreType)) {
-            String driverClass = datastoreInfoSheet.getRow(1).getCell(1)
-                    .getStringCellValue();
-            String connectionUrl = datastoreInfoSheet.getRow(2).getCell(1)
-                    .getStringCellValue();
-            String username = datastoreInfoSheet.getRow(3).getCell(1)
-                    .getStringCellValue();
-            String password = datastoreInfoSheet.getRow(4).getCell(1)
-                    .getStringCellValue();
-            String schema = datastoreInfoSheet.getRow(5).getCell(1)
-                    .getStringCellValue();
-            return new DatabaseInfo(driverClass, connectionUrl, username,
-                    password, schema);
+            String driverClass = datastoreInfoSheet.getRow(1).getCell(1).getStringCellValue();
+            String connectionUrl = datastoreInfoSheet.getRow(2).getCell(1).getStringCellValue();
+            String username = datastoreInfoSheet.getRow(3).getCell(1).getStringCellValue();
+            String password = datastoreInfoSheet.getRow(4).getCell(1).getStringCellValue();
+            String schema = datastoreInfoSheet.getRow(5).getCell(1).getStringCellValue();
+            if ("-".equals(schema)) {
+                schema = null;
+            }
+            return new DatabaseInfo(driverClass, connectionUrl, username, password, schema);
 
         } else if ("FlatFile".equals(datastoreType)) {
-            String filePath = datastoreInfoSheet.getRow(6).getCell(1)
-                    .getStringCellValue();
-            String charsetName = datastoreInfoSheet.getRow(7).getCell(1)
-                    .getStringCellValue();
+            String filePath = datastoreInfoSheet.getRow(6).getCell(1).getStringCellValue();
+            String charsetName = datastoreInfoSheet.getRow(7).getCell(1).getStringCellValue();
             return new FlatFileInfo(filePath, charsetName);
         }
-        throw new RuntimeException("Illegal datastore type. datastoreType="
-                + datastoreType);
+        throw new RuntimeException("Illegal datastore type. datastoreType=" + datastoreType);
     }
 
-    public void assertDatastores(final String ifId, final String testCaseId)
-            throws Exception {
+    public void assertDatastores(final String ifId, final String testCaseId) throws Exception {
 
-        log.debug("Start asserting datastores. ifId=" + ifId + ", testCaseId="
-                + testCaseId);
+        log.debug("Start asserting datastores. ifId=" + ifId + ", testCaseId=" + testCaseId);
 
-        String testcaseFileDir = FilenameUtils.concat(
-                FilenameUtils.concat(testcaseRootDir, ifId), testCaseId);
+        String testcaseFileDir = FilenameUtils.concat(FilenameUtils.concat(testcaseRootDir, ifId), testCaseId);
 
         File ifIdDir = new File(testcaseFileDir);
         String[] datastoreFiles = ifIdDir.list(new FilenameFilter() {
 
             public boolean accept(File dir, String name) {
-                return (name.startsWith(testCaseId + FILENAME_SEPARATOR
-                        + AFTER_FILENAME_FLAG + FILENAME_SEPARATOR)) ? true
-                        : false;
+                return (name.startsWith(testCaseId + FILENAME_SEPARATOR + AFTER_FILENAME_FLAG + FILENAME_SEPARATOR))
+                        ? true : false;
             }
         });
 
-        String evicendeDirName = FilenameUtils.concat(FilenameUtils.concat(evidenceRootDir, ifId),testCaseId);
+        String evicendeDirName = FilenameUtils.concat(FilenameUtils.concat(evidenceRootDir, ifId), testCaseId);
         if (saveAfterEvidence) {
 
             File dir = new File(evicendeDirName);
@@ -206,32 +176,26 @@ public class EtlTester {
         }
 
         for (String datastoreFileName : datastoreFiles) {
-            String datastoreName = datastoreFileName
-                    .substring((testCaseId + FILENAME_SEPARATOR
-                            + AFTER_FILENAME_FLAG + FILENAME_SEPARATOR)
-                            .length(), datastoreFileName.lastIndexOf("."));
+            String datastoreName = datastoreFileName.substring(
+                    (testCaseId + FILENAME_SEPARATOR + AFTER_FILENAME_FLAG + FILENAME_SEPARATOR).length(),
+                    datastoreFileName.lastIndexOf("."));
 
             DatastoreInfo datastore = getDatastoreInfo(datastoreName);
 
             if (datastore instanceof DatabaseInfo) {
-                IDataSet expectedDataSet = new XlsDataSet(new File(
-                        FilenameUtils.concat(testcaseFileDir,
-                                datastoreFileName)));
+                IDataSet expectedDataSet = new XlsDataSet(
+                        new File(FilenameUtils.concat(testcaseFileDir, datastoreFileName)));
 
                 IDatabaseTester databaseTester = getDatabaseTester(datastoreName);
                 IDatabaseConnection connection = databaseTester.getConnection();
                 IDataSet actualDataSet = connection.createDataSet();
 
                 if (saveAfterEvidence) {
-                    String evidenceFilePath = FilenameUtils.concat(
-                            evicendeDirName,
-                            datastoreFileName.replace(
-                                    AFTER_FILENAME_FLAG,
-                                    ACTUAL_FILENAME_FALG)).replace(
-                            ".xlsx", ".xls");
-                    XlsDataSet.write(
-                            actualDataSet,
-                            new FileOutputStream(new File(evidenceFilePath)));
+                    String evidenceFilePath = FilenameUtils
+                            .concat(evicendeDirName,
+                                    datastoreFileName.replace(AFTER_FILENAME_FLAG, ACTUAL_FILENAME_FALG))
+                            .replace(".xlsx", ".xls");
+                    XlsDataSet.write(actualDataSet, new FileOutputStream(new File(evidenceFilePath)));
                     log.info("Save evicence file. file=" + evidenceFilePath);
                 }
 
@@ -240,10 +204,8 @@ public class EtlTester {
                     ITable actualTable = actualDataSet.getTable(tableName);
                     Assertion.assertEquals(expectedTable, actualTable);
 
-                    log.info(String.format(
-                            "Assert OK! schema=%s, table=%s, expectedFile=%s",
-                            ((DatabaseInfo) datastore).getSchema(), tableName,
-                            datastoreFileName));
+                    log.info(String.format("Assert OK! schema=%s, table=%s, expectedFile=%s",
+                            ((DatabaseInfo) datastore).getSchema(), tableName, datastoreFileName));
                 }
 
             } else if (datastore instanceof FlatFileInfo) {
@@ -251,22 +213,18 @@ public class EtlTester {
 
                 if (saveAfterEvidence) {
                     File acturalFile = new File(flatFile.getFilePath());
-                    String evidenceFilePath = FilenameUtils.concat(
-                            evicendeDirName, datastoreFileName.replace(
-                                    AFTER_FILENAME_FLAG, ACTUAL_FILENAME_FALG));
+                    String evidenceFilePath = FilenameUtils.concat(evicendeDirName,
+                            datastoreFileName.replace(AFTER_FILENAME_FLAG, ACTUAL_FILENAME_FALG));
                     File evidenceFile = new File(evidenceFilePath);
                     FileUtils.copyFile(acturalFile, evidenceFile);
                     log.info("Save evicence file. file=" + evidenceFilePath);
                 }
 
                 List<String> expectedLines = Files.readAllLines(
-                        FileSystems.getDefault().getPath(
-                                FilenameUtils.concat(testcaseFileDir,
-                                        datastoreFileName)), Charset
-                                .forName(flatFile.getCharsetName()));
-                List<String> actualLines = Files.readAllLines(FileSystems
-                        .getDefault().getPath(flatFile.getFilePath()), Charset
-                        .forName(flatFile.getCharsetName()));
+                        FileSystems.getDefault().getPath(FilenameUtils.concat(testcaseFileDir, datastoreFileName)),
+                        Charset.forName(flatFile.getCharsetName()));
+                List<String> actualLines = Files.readAllLines(FileSystems.getDefault().getPath(flatFile.getFilePath()),
+                        Charset.forName(flatFile.getCharsetName()));
 
                 Patch patch = DiffUtils.diff(expectedLines, actualLines);
                 List<Delta> deltas = patch.getDeltas();
@@ -275,49 +233,37 @@ public class EtlTester {
                     StringBuilder sb = new StringBuilder();
                     sb.append(System.getProperty("line.separator"));
                     for (Delta delta : deltas) {
-                        sb.append("expected(line:"
-                                + delta.getOriginal().getPosition() + 1 + ")"
+                        sb.append("expected(line:" + delta.getOriginal().getPosition() + 1 + ")"
                                 + System.getProperty("line.separator"));
-                        for (Object expectedLine : delta.getOriginal()
-                                .getLines()) {
-                            sb.append("> " + expectedLine
-                                    + System.getProperty("line.separator"));
+                        for (Object expectedLine : delta.getOriginal().getLines()) {
+                            sb.append("> " + expectedLine + System.getProperty("line.separator"));
                         }
-                        sb.append("actural(line:"
-                                + delta.getRevised().getPosition() + 1 + ")"
+                        sb.append("actural(line:" + delta.getRevised().getPosition() + 1 + ")"
                                 + System.getProperty("line.separator"));
-                        for (Object expectedLine : delta.getRevised()
-                                .getLines()) {
-                            sb.append("< " + expectedLine
-                                    + System.getProperty("line.separator"));
+                        for (Object expectedLine : delta.getRevised().getLines()) {
+                            sb.append("< " + expectedLine + System.getProperty("line.separator"));
                         }
                     }
                     String diffInfo = sb.toString();
 
-                    log.info(String.format(
-                            "Assert NG! fileName=%s, expectedFile=%s",
-                            flatFile.getFilePath(), datastoreFileName));
+                    log.info(String.format("Assert NG! fileName=%s, expectedFile=%s", flatFile.getFilePath(),
+                            datastoreFileName));
                     log.info("Diffs=" + diffInfo);
-                    fail(String
-                            .format("Files does not match. expected=%s, actural=%s, diff=%s",
-                                    FilenameUtils.concat(testcaseFileDir,
-                                            datastoreFileName), flatFile
-                                            .getFilePath(), diffInfo));
+                    fail(String.format("Files does not match. expected=%s, actural=%s, diff=%s",
+                            FilenameUtils.concat(testcaseFileDir, datastoreFileName), flatFile.getFilePath(),
+                            diffInfo));
                 }
 
-                log.info(String.format(
-                        "Assert OK! fileName=%s, expectedFile=%s",
-                        flatFile.getFilePath(), datastoreFileName));
+                log.info(String.format("Assert OK! fileName=%s, expectedFile=%s", flatFile.getFilePath(),
+                        datastoreFileName));
             }
 
         }
 
-        log.debug("Finish asserting datastores. ifId=" + ifId + ", testCaseId="
-                + testCaseId);
+        log.debug("Finish asserting datastores. ifId=" + ifId + ", testCaseId=" + testCaseId);
     }
 
-    private IDatabaseTester getDatabaseTester(String datastoreName)
-            throws ClassNotFoundException {
+    private IDatabaseTester getDatabaseTester(String datastoreName) throws ClassNotFoundException {
 
         IDatabaseTester databaseTester = databaseTesterMap.get(datastoreName);
 
@@ -327,10 +273,8 @@ public class EtlTester {
 
         DatabaseInfo database = (DatabaseInfo) getDatastoreInfo(datastoreName);
 
-        databaseTester = new JdbcDatabaseTester(database.getDriverClass(),
-                database.getConnectionUrl(), database.getUserName(),
-                database.getUserPassword(), null);
-//        database.getUserPassword(), database.getSchema());
+        databaseTester = new JdbcDatabaseTester(database.getDriverClass(), database.getConnectionUrl(),
+                database.getUserName(), database.getUserPassword(), database.getSchema());
 
         databaseTesterMap.put(datastoreName, databaseTester);
 
