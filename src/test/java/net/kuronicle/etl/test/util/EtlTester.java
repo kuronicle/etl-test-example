@@ -1,6 +1,6 @@
 package net.kuronicle.etl.test.util;
 
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -176,15 +176,6 @@ public class EtlTester {
                 + datastoreType);
     }
 
-    public void cleanDatastores(String ifId, String testCaseId)
-            throws Exception {
-        /*
-         * databaseTester.setTearDownOperation(DatabaseOperation.DELETE_ALL);
-         * databaseTester.onTearDown();
-         */
-
-    }
-
     public void assertDatastores(final String ifId, final String testCaseId)
             throws Exception {
 
@@ -338,7 +329,8 @@ public class EtlTester {
 
         databaseTester = new JdbcDatabaseTester(database.getDriverClass(),
                 database.getConnectionUrl(), database.getUserName(),
-                database.getUserPassword(), database.getSchema());
+                database.getUserPassword(), null);
+//        database.getUserPassword(), database.getSchema());
 
         databaseTesterMap.put(datastoreName, databaseTester);
 
